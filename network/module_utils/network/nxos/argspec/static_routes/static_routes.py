@@ -57,6 +57,9 @@ class Static_routesArgs(object):  # pylint: disable=R0903
                                         'admin_distance': {
                                             'type': 'int'
                                         },
+                                        'dest_vrf': {
+                                            'type': 'str'
+                                        },
                                         'forward_router_address': {
                                             'required': True,
                                             'type': 'str'
@@ -72,9 +75,6 @@ class Static_routesArgs(object):  # pylint: disable=R0903
                                         },
                                         'track': {
                                             'type': 'int'
-                                        },
-                                        'vrf': {
-                                            'type': 'str'
                                         }
                                     },
                                     'type': 'list'
@@ -100,7 +100,8 @@ class Static_routesArgs(object):  # pylint: disable=R0903
                 'deleted', 'merged', 'overridden', 'replaced', 'gathered',
                 'rendered', 'parsed'
             ],
-            'default': ['merged'],
+            'default':
+            'merged',
             'type':
             'str'
         }
