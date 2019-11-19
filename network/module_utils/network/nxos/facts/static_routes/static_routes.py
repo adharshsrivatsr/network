@@ -72,64 +72,65 @@ class Static_routesFacts(object):
         ansible_facts['ansible_network_resources'].update(facts)
         return ansible_facts
 
-    def get_inner_dict(self, conf, next_hop):
+    def get_inner_dict(self, conf, inner_dict):
         conf = re.sub('\s*ip(v6)? route', '', conf)
         # strip 'ip route'
-        next_hop['dest'] = re.match("^\s*(\S+\/\d+) .*", conf).group(1)
+        inner_dict['dest'] = re.match("^\s*(\S+\/\d+) .*", conf).group(1)
 
         # ethernet1/2/23
         iface = re.match(".* ([a-zA-Z0-9]+\d*\/\d+(\/?\.?\d*)*) .*", conf)
         if iface:
-            next_hop['interface'] = (iface.group(1))
+            inner_dict['interface'] = (iface.group(1))
 
-        if '.' in next_hop['dest']:
-            next_hop['afi'] = 'ipv4'
+        if '.' in inner_dict['dest']:
+            inner_dict['afi'] = 'ipv4'
             ipv4 = re.match(r'.* (\d+\.\d+\.\d+\.\d+).*',
                             conf)  # gets next hop ip
-            next_hop['forward_router_address'] = ipv4.group(1)
+            inner_dict['forward_router_address'] = ipv4.group(1)
         else:
-            next_hop['afi'] = 'ipv6'
+            inner_dict['afi'] = 'ipv6'
             ipv6 = re.match(r'.* (\S*:\S*:\S*).*', conf)
-            next_hop['forward_router_address'] = ipv6.group(1)
+            inner_dict['forward_router_address'] = ipv6.group(1)
 
         nullif = re.search('null0', conf, re.IGNORECASE)
         if nullif:
-            next_hop['interface'] = 'Null0'
-            return next_hop  # dest IP not needed for null if
+            inner_dict['interface'] = 'Null0'
+            return inner_dict  # dest IP not needed for null if
 
         keywords = ['vrf', 'name', 'tag', 'track']
         for key in keywords:
             pattern = re.match('.* (?:%s) (\S+).*' % key, conf)
             if pattern:
-                next_hop[key] = pattern.group(1)
+                inner_dict[key] = pattern.group(1)
 
         pref = re.match('(?:.*) (\d+) (\d+)', conf)
         if pref:
-            next_hop['admin_distance'] = pref.group(2)
+            inner_dict['admin_distance'] = pref.group(2)
 
-        return next_hop
+        return inner_dict
 
-    def process_command(self, c, afi_list, dest_list, af):
-        n = {}
-        n = self.get_inner_dict(c, n)
-        if n['afi'] not in afi_list:
-            af.append({'afi': n['afi'], 'routes': []})
-            afi_list.append(n['afi'])
+    def process_command(self, conf, afi_list, dest_list, af):
+        inner_dict = {}
+        inner_dict = self.get_inner_dict(conf, inner_dict)
+        if inner_dict['afi'] not in afi_list:
+            af.append({'afi': inner_dict['afi'], 'routes': []})
+            afi_list.append(inner_dict['afi'])
         next_hop = {}
         params = ['forward_router_address', 'interface',
                   'admin_distance', 'name', 'tag', 'track', 'vrf']
         for p in params:
-            if p in n.keys():
+            if p in inner_dict.keys():
                 if p == 'name':
-                    next_hop.update({'route_name': n[p]})
+                    next_hop.update({'route_name': inner_dict[p]})
                 elif p == 'vrf':
-                    next_hop.update({'dest_vrf': n[p]})
+                    next_hop.update({'dest_vrf': inner_dict[p]})
                 else:
-                    next_hop.update({p: n[p]})
+                    next_hop.update({p: inner_dict[p]})
 
-        if n['dest'] not in dest_list:
-            dest_list.append(n['dest'])
-            af[-1]['routes'].append({'dest': n['dest'], 'next_hops': []})
+        if inner_dict['dest'] not in dest_list:
+            dest_list.append(inner_dict['dest'])
+            af[-1]['routes'].append({'dest': inner_dict['dest'],
+                                     'next_hops': []})
             # if 'dest' is new, create new list under 'routes'
             af[-1]['routes'][-1]['next_hops'].append(next_hop)
         else:
@@ -162,7 +163,7 @@ class Static_routesFacts(object):
                     dest_list = []
                     config_dict = {'vrf': svrf, 'address_families': []}
                     conf = conf.split('\n')
-                    # considering from the second line. First line is 'vrf context..'
+                    # considering from the second line as first line is 'vrf context..'
                     conf = conf[1:]
                     for c in conf:
                         if 'ip route' in c or 'ipv6 route' in c:
