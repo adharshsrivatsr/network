@@ -44,7 +44,12 @@ description: This module configures and manages the attributes of static routes 
 author: Adharsh Srivats Rangarajan (@adharshsrivatsr)
 notes:
   - Tested against NX-OS 7.3.(0)D1(1) on VIRL
+  - To parse configuration text, provide the output of show running-config | section interface  or a mocked up config
 options:
+  running_config:
+    description:
+      - Used to parse given commands into structured format, only in parsed state
+    type: str
   config:
     description:
       - A list of configurations for static routes
@@ -125,6 +130,7 @@ options:
       - replaced
       - gathered
       - rendered
+      - parsed
     default:
       - merged
 """
@@ -258,14 +264,21 @@ EXAMPLES = """
 #
 # ipv6 route 4011::0db1/128 6::6 
 # vrf context Test
-# ip route 12.12.12.0/24 192.168.121.1 
-# ip route 12.12.12.0/24 192.168.123.45 5
+#    ip route 12.12.12.0/24 192.168.121.1 
+#    ip route 12.12.12.0/24 192.168.123.45 5
 
 - name: Gather the exisitng condiguration
   nxos_static_routes:
     state: gathered
 
-# Output :
+# After state:
+#
+# ipv6 route 4011::0db1/128 6::6 
+# vrf context Test
+#   ip route 12.12.12.0/24 192.168.121.1 
+#   ip route 12.12.12.0/24 192.168.123.45 5
+
+# returns:
 # 
 #  nxos_static_routes:
 #    config:
@@ -295,7 +308,7 @@ EXAMPLES = """
 #
 #
 
-- name: Rendering the configuration
+- name: Render required configuration to be pushed to the device
   nxos_static_routes:
     config:
         - vrf: 123
@@ -308,9 +321,54 @@ EXAMPLES = """
 
     state: rendered
 
-# Output:
+# After state:
+# -----------
+#
+
+
+# returns
+# commands:
 # vrf context 123
 # ip route 14.14.14.14/24 192.112.134.78
+
+
+# Using parsed
+#
+# Before state:
+# -------------
+# 
+
+- name: Parse the config to structured data
+  nxos_static_routes:
+    running_config: |
+        ipv6 route 4011::0db1/128 6::6 
+        vrf context Test
+           ip route 12.12.12.0/24 192.168.121.1 
+           ip route 12.12.12.0/24 192.168.123.45 5
+
+# After state:
+# ------------
+#
+
+#returns
+#after:
+#    -   vrf: Test
+#        address_families:
+#            -   afi: ipv4
+#                routes:
+#                -   dest: 12.12.12.0/24
+#                    next_hop: 
+#                        -   forward_router_address: 192.168.121.1 
+#    
+#                        -   forward_router_address: 192.168.123.45
+#                            pref: 5
+#    
+#    -   address_families:
+#            - afi: ipv6
+#                routes:
+#                    -   dest: 4011::0db1/128
+#                        next_hop:
+#                            -   forward_router_address: 6::6
 
 
 """

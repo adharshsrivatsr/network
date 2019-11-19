@@ -19,7 +19,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = """
 ---
 module: nxos_facts
-version_added: 2.1
+version_added: 2.10
 short_description: Get facts about nxos devices.
 description:
   - Collects facts from network devices running the nxos operating
@@ -27,7 +27,7 @@ description:
     respective resource name.  The facts module will always collect a
     base set of facts from the device and can enable or disable
     collection of additional facts.
-author: Adharsh Srivats Rangarajan (adharshsrivatsr)
+author: Adharsh Srivats Rangarajan (@adharshsrivatsr)
 options:
   gather_subset:
     description:
@@ -58,23 +58,23 @@ EXAMPLES = """
     gather_subset: all
     gather_network_resources: all
 
-# Collect only the static_route facts
+# Collect only the static_routes facts
 - nxos_facts:
     gather_subset:
       - !all
       - !min
     gather_network_resources:
-      - static_route
+      - static_routes
 
-# Do not collect static_route facts
+# Do not collect static_routes facts
 - nxos_facts:
     gather_network_resources:
-      - "!static_route"
+      - "!static_routes"
 
-# Collect static_route and minimal default facts
+# Collect static_routes and minimal default facts
 - nxos_facts:
     gather_subset: min
-    gather_network_resources: static_route
+    gather_network_resources: static_routes
 """
 
 RETURN = """
