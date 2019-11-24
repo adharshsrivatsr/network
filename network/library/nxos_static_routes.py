@@ -115,7 +115,7 @@ options:
                     description:
                       - Track value (range 1 - 512). Track must already be configured on the device before adding the route.
                     type: int
-                  vrf:
+                  dest_vrf:
                     description:
                       - VRF of the destination
                     type: str
@@ -131,8 +131,7 @@ options:
       - gathered
       - rendered
       - parsed
-    default:
-      - merged
+    default: merged
 """
 EXAMPLES = """
 # Using deleted:
