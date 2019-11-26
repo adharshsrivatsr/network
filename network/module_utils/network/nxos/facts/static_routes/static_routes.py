@@ -128,7 +128,6 @@ class Static_routesFacts(object):
         for key in keywords:
             pattern = re.match('.* (?:%s) (\S+).*' % key, conf)
             if pattern:
-                q(key)
                 if key == 'vrf':
                     key = 'dest_vrf'
                 elif key == 'name':

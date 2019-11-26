@@ -130,7 +130,6 @@ class Static_routes(ConfigBase):
             want = self._module.params['running_config']
             commands = self._state_parsed(want)
         else:
-            q(want)
             for w in want:
                 if state == 'merged':
                     commands.extend(self._state_merged(w, have))
@@ -276,7 +275,6 @@ class Static_routes(ConfigBase):
                   of the provided objects
         """
         commands = []
-        q(want)
         if want:
             for w in want:
                 obj_in_have = search_obj_in_list(w['vrf'], have, 'vrf')
@@ -288,21 +286,15 @@ class Static_routes(ConfigBase):
         return commands
 
     def del_commands(self, have):
-        q(have)
         commands = []
-        # if have != [{'vrf': '__global__'}]:
         for h in have:
             if h != {'vrf': '__global__'}:
                 if h['vrf'] == '__global__':
                     h['vrf'] = 'default'
                 commands.append('vrf context ' + h['vrf'])
-                # q(h)
                 for af in h['address_families']:
-                    # q(af)
                     for route in af['routes']:
-                        # q(route)
                         for next_hop in route['next_hops']:
-                            # q(next_hop)
                             if af['afi'] == 'ipv4':
                                 command = 'no ip route ' + \
                                     route['dest'] + ' ' + \
@@ -312,13 +304,11 @@ class Static_routes(ConfigBase):
                                     route['dest'] + ' ' + \
                                     self.add_commands(next_hop)
                             commands.append(command.strip())
-        q(commands)
         return commands
 
     def add_commands(self, want):
         command = ''
         params = want.keys()
-        # q(want)
         pref = vrf = ip = intf = name = tag = track = ''
         if 'admin_distance' in params:
             pref = str(want['admin_distance']) + ' '
@@ -326,7 +316,6 @@ class Static_routes(ConfigBase):
             track = 'track ' + str(want['track'])+' '
         if 'dest_vrf' in params:
             vrf = 'vrf '+str(want['dest_vrf']) + ' '
-
         if 'forward_router_address' in params:
             ip = want['forward_router_address']+' '
         if 'interface' in params:
@@ -335,143 +324,79 @@ class Static_routes(ConfigBase):
             name = 'name ' + str(want['route_name'])+' '
         if 'tag' in params:
             tag = 'tag '+str(want['tag'])+' '
-
         command = intf+ip+vrf+name+tag+track+pref
-        # q(command)
         return command
 
     def set_commands(self, want, have):
         commands = []
         h1 = h2 = h3 = {}
-        q(want, have)
         want = remove_empties(want)
         vrf_list = []
         if have:
             vrf_list = [h['vrf'] for h in have]
-        q(vrf_list)
-        q(want['vrf'])
         if want['vrf'] in vrf_list and have != [{'vrf': '__global__'}]:
             for x in have:
                 if x['vrf'] == want['vrf']:
                     h1 = x  # this has the 'have' dict with same vrf as want
-            q(h1)
             if 'address_families' in h1.keys():
                 afi_list = [h['afi'] for h in h1['address_families']]
-                q(want)
                 for af in want['address_families']:
                     if af['afi'] in afi_list:
                         for x in h1['address_families']:
                             if x['afi'] == af['afi']:
                                 h2 = x  # this has the have dict with same vrf and afi as want
-                        q(h2)
                         dest_list = [h['dest'] for h in h2['routes']]
                         for ro in af['routes']:
-                            q(dest_list)
-                            # if want['vrf'] is '__global__':
-                            #     want['vrf'] = 'default'
-                            # commands.append('vrf context '+str(want['vrf']))
-
+                            # q(dest_list)
                             if ro['dest'] in dest_list:
                                 for x in h2['routes']:
                                     if x['dest'] == ro['dest']:
                                         h3 = x  # this has the have dict with same vrf, afi and dest as want
-                                q(h3)
-                                flag = 0
                                 next_hop_list = [h for h in h3['next_hops']]
-                                q(next_hop_list, ro['next_hops'], commands)
                                 for nh in ro['next_hops']:
                                     if 'interface' in nh.keys():
                                         nh['interface'] = normalize_interface(
                                             nh['interface'])
                                     if nh not in next_hop_list:
-                                        if want['vrf'] is '__global__':
-                                            want['vrf'] = 'default'
-                                        if h2['afi'] == 'ipv4':
-                                            com = 'ip route ' + \
-                                                ro['dest'] + ' ' + \
-                                                self.add_commands(nh)
-                                            q(com)
-
-                                        else:
-                                            com = 'ipv6 route ' + \
-                                                ro['dest'] + ' ' + \
-                                                self.add_commands(nh)
-
+                                        # no match for next hop in have
+                                        commands = self.set_next_hop(
+                                            want, h2, nh, ro, commands)
                                         vrf_list.append(want['vrf'])
-                                        commands.append(com.strip())
-                                        string = 'vrf context ' + \
-                                            str(want['vrf'])
-                                        if string not in commands:
-                                            commands.insert(0, string)
-                                        q(commands)
-                                    # if not flag:
-                                    #     # 'vrf context ' command is added initially and then next hop commands are added, but vrf context command is not needed if there is no new next hop to add
-                                    #     q(commands)
-                                    #     commands.pop()
-                                    #     flag = 1
                             else:
-                                q('no match for dest')
-
+                                # no match for dest
                                 for nh in ro['next_hops']:
-                                    if h2['afi'] == 'ipv4':
-                                        com = 'ip route ' + \
-                                            ro['dest'] + ' ' + \
-                                            self.add_commands(nh)
-                                    else:
-                                        com = 'ipv6 route ' + \
-                                            ro['dest'] + ' ' + \
-                                            self.add_commands(nh)
-                                    if want['vrf'] is '__global__':
-                                        want['vrf'] = 'default'
-                                    # commands.append(
-                                    #     'vrf context '+str(want['vrf']))
-                                    string = 'vrf context '+str(want['vrf'])
-                                    if string not in commands:
-                                        commands.insert(0, string)
-                                    commands.append(com.strip())
-
+                                    commands = self.set_next_hop(
+                                        want, h2, nh, ro, commands)
                     else:
-                        q('no match for afi')
-                        if want['vrf'] is '__global__':
-                            want['vrf'] = 'default'
-                        # commands.append('vrf context '+str(want['vrf']))
+                        # no match for afi
                         for ro in af['routes']:
                             for nh in ro['next_hops']:
-                                if af['afi'] == 'ipv4':
-                                    com = 'ip route ' + \
-                                        ro['dest'] + ' ' + \
-                                        self.add_commands(nh)
-                                else:
-                                    com = 'ipv6 route ' + \
-                                        ro['dest'] + ' ' + \
-                                        self.add_commands(nh)
-                                commands.append(com.strip())
-                                string = 'vrf context '+str(want['vrf'])
-                                if string not in commands:
-                                    commands.insert(0, string)
-
+                                commands = self.set_next_hop(
+                                    want, af, nh, ro, commands)
         else:
-            q('no match for vrf')
-            q(want['vrf'])
-            if want['vrf'] is '__global__':
-                want['vrf'] = 'default'
-            # commands.append('vrf context ' + str(want['vrf']))
+            # no match for vrf
             vrf_list.append(want['vrf'])
-            for wa in want['address_families']:
-                for ro in wa['routes']:
+            for af in want['address_families']:
+                for ro in af['routes']:
                     for nh in ro['next_hops']:
-                        if wa['afi'] == 'ipv4':
-                            com = 'ip route ' + \
-                                ro['dest'] + ' ' + \
-                                self.add_commands(nh)
-                        else:
-                            com = 'ipv6 route ' + \
-                                ro['dest'] + ' ' + \
-                                self.add_commands(nh)
-                        commands.append(com.strip())
-                        string = 'vrf context '+str(want['vrf'])
-                        if string not in commands:
-                            commands.insert(0, string)
+                        commands = self.set_next_hop(
+                            want, af, nh, ro, commands)
+        return commands
 
-        q(commands)
+    def set_next_hop(self, want, h2, nh, ro, commands):
+        if want['vrf'] is '__global__':
+            want['vrf'] = 'default'
+        if h2['afi'] == 'ipv4':
+            com = 'ip route ' + \
+                ro['dest'] + ' ' + \
+                self.add_commands(nh)
+        else:
+            com = 'ipv6 route ' + \
+                ro['dest'] + ' ' + \
+                self.add_commands(nh)
+        commands.append(com.strip())
+        string = 'vrf context ' + \
+            str(want['vrf'])
+        if string not in commands:
+            commands.insert(0, string)
         return commands
