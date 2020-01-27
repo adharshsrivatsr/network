@@ -17,7 +17,7 @@ class FactsArgs(object):  # pylint: disable=R0903
 
     choices = [
         'all',
-        'static_routes',
+        'acls',
     ]
 
     argument_spec = {

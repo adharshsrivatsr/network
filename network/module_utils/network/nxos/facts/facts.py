@@ -8,14 +8,15 @@ The facts class for nxos
 this file validates each subset of facts and selectively
 calls the appropriate facts gathering function
 """
+
 from ansible.module_utils.network.nxos.argspec.facts.facts import FactsArgs
 from ansible.module_utils.network.common.facts.facts import FactsBase
-from ansible.module_utils.network.nxos.facts.static_routes.static_routes import Static_routesFacts
+from ansible.module_utils.network.nxos.facts.acls.acls import AclsFacts
 
 
 FACT_LEGACY_SUBSETS = {}
 FACT_RESOURCE_SUBSETS = dict(
-    static_routes=Static_routesFacts,
+    acls=AclsFacts,
 )
 
 
@@ -38,10 +39,13 @@ class Facts(FactsBase):
         :rtype: dict
         :return: the facts gathered
         """
+
         if self.VALID_RESOURCE_SUBSETS:
-            self.get_network_resources_facts(FACT_RESOURCE_SUBSETS, resource_facts_type, data)
+            self.get_network_resources_facts(
+                FACT_RESOURCE_SUBSETS, resource_facts_type, data)
 
         if self.VALID_LEGACY_GATHER_SUBSETS:
-            self.get_network_legacy_facts(FACT_LEGACY_SUBSETS, legacy_facts_type)
+            self.get_network_legacy_facts(
+                FACT_LEGACY_SUBSETS, legacy_facts_type)
 
         return self.ansible_facts, self._warnings
